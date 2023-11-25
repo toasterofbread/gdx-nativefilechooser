@@ -64,6 +64,10 @@ public class DesktopFileChooser implements NativeFileChooser {
 	 */
 	@Override
 	public void chooseFile(final NativeFileChooserConfiguration configuration, NativeFileChooserCallback callback) {
+		chooseFile(configuration, callback, null);
+	}
+
+	public void chooseFile(final NativeFileChooserConfiguration configuration, NativeFileChooserCallback callback, FilenameFilter filenameFilter) {
 
 		NativeFileChooserUtils.checkNotNull(configuration, "configuration");
 		NativeFileChooserUtils.checkNotNull(callback, "callback");
@@ -74,7 +78,7 @@ public class DesktopFileChooser implements NativeFileChooser {
 				configuration.title == null ? "" : configuration.title,
 				configuration.intent == NativeFileChooserIntent.SAVE ? FileDialog.SAVE : FileDialog.LOAD);
 
-		FilenameFilter filter = createFilenameFilter(configuration);
+		FilenameFilter filter = filenameFilter == null ? createFilenameFilter(configuration) : filenameFilter;
 
 		if (filter != null)
 			fileDialog.setFilenameFilter(filter);
@@ -93,7 +97,6 @@ public class DesktopFileChooser implements NativeFileChooser {
 		} else {
 			callback.onFileChosen(new FileHandle(files[0]));
 		}
-
 	}
 
 	static FilenameFilter createFilenameFilter(final NativeFileChooserConfiguration configuration) {
