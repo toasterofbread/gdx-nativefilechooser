@@ -1,5 +1,8 @@
 apply plugin: 'maven-publish'
-apply plugin: 'signing'
+
+if (!System.env.JITPACK) {
+    apply plugin: 'signing'
+}
 
 task sourcesJar(type: Jar) {
     archiveClassifier.set('sources')
@@ -24,7 +27,6 @@ afterEvaluate {
     publishing {
         publications {
             release(MavenPublication) {
-
                 artifactId archivesBaseName
 
                 if (project.plugins.findPlugin("com.android.library")) {
@@ -74,6 +76,8 @@ ext["signing.keyId"] = rootProject.ext["signing.keyId"]
 ext["signing.password"] = rootProject.ext["signing.password"]
 ext["signing.secretKeyRingFile"] = rootProject.ext["signing.secretKeyRingFile"]
 
-signing {
-    sign publishing.publications
+if (!System.env.JITPACK) {
+    signing {
+        sign publishing.publications
+    }
 }
