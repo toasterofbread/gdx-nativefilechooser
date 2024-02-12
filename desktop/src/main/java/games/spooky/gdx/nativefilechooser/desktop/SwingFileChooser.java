@@ -30,6 +30,9 @@ import javax.swing.*;
 import javax.swing.filechooser.FileFilter;
 import java.io.File;
 import java.io.FilenameFilter;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.regex.Pattern;
 
 /**
  * Implementation of a {@link NativeFileChooser} for the Desktop backend of a
@@ -60,6 +63,10 @@ public class SwingFileChooser implements NativeFileChooser {
 	 */
 	@Override
 	public void chooseFile(final NativeFileChooserConfiguration configuration, NativeFileChooserCallback callback) {
+  chooseFile(configuration, callback, null);
+ }
+
+ public void chooseFile(final NativeFileChooserConfiguration configuration, NativeFileChooserCallback callback, FilenameFilter filenameFilter) {
 
 		NativeFileChooserUtils.checkNotNull(configuration, "configuration");
 		NativeFileChooserUtils.checkNotNull(callback, "callback");
@@ -71,7 +78,7 @@ public class SwingFileChooser implements NativeFileChooser {
 		if (title != null)
 			fileChooser.setDialogTitle(title);
 
-		FilenameFilter filter = DesktopFileChooser.createFilenameFilter(configuration);
+  FilenameFilter filter = filenameFilter == null ? createFilenameFilter(configuration) : filenameFilter;
 
 		if (filter != null) {
 			final FilenameFilter finalFilter = filter;
@@ -103,4 +110,56 @@ public class SwingFileChooser implements NativeFileChooser {
 			callback.onCancellation();
         }
 	}
+
+ static FilenameFilter createFilenameFilter(final NativeFileChooserConfiguration configuration) {
+  FilenameFilter filter = null;
+
+  // Add MIME type filter if any
+  if (configuration.mimeFilter != null)
+   filter = createMimeTypeFilter(configuration.mimeFilter);
+
+  // Add name filter if any
+  if (configuration.nameFilter != null) {
+   if (filter == null) {
+    filter = configuration.nameFilter;
+   } else {
+    // Combine filters!
+    final FilenameFilter mime = filter;
+    filter = new FilenameFilter() {
+     @Override
+					public boolean accept(File dir, String name) {
+      return mime.accept(dir, name) && configuration.nameFilter.accept(dir, name);
+     }
+    };
+   }
+  }
+  return filter;
+ }
+
+ private static FilenameFilter createMimeTypeFilter(final String mimeType) {
+  return new FilenameFilter() {
+
+   final Pattern mimePattern = NativeFileChooserUtils.mimePattern(mimeType);
+
+   @Override
+			public boolean accept(File dir, String name) {
+
+    // Getting a Mime type is not warranted (and may be slow!)
+    try {
+     String mime = Files.probeContentType(new File(dir, name).toPath());
+
+     if (mime != null) {
+      // Try to get a match on Mime type
+      // That's quite faulty I know!
+      return mimePattern.matcher(mime).matches();
+     }
+
+    } catch (IOException ignored) {
+    }
+
+    // Accept by default, in case mime probing doesn't work
+    return true;
+   }
+  };
+ }
 }
